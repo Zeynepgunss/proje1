@@ -1,0 +1,132 @@
+import csv
+
+class Gemi:
+    def __init__(self, geliş_zamanı, gemi_adı, kapasite, gidecek_ülke):
+        self.geliş_zamanı = geliş_zamanı
+        self.gemi_adı = gemi_adı
+        self.kapasite = kapasite
+        self.gidecek_ülke = gidecek_ülke
+
+class Tır:
+    def __init__(self, geliş_zamanı, plaka, ülke, ton_20_adet, ton_30_adet, yuk_miktari, maliyet):
+        self.geliş_zamanı = geliş_zamanı
+        self.plaka = plaka
+        self.ülke = ülke
+        self.ton_20_adet = ton_20_adet
+        self.ton_30_adet = ton_30_adet
+        self.yuk_miktari = yuk_miktari
+        self.maliyet = maliyet
+
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def is_empty(self):
+        return len(self.items) == 0
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        if not self.is_empty():
+            return self.items.pop()
+
+    def peek(self):
+        if not self.is_empty():
+            return self.items[-1]
+
+    def size(self):
+        return len(self.items)
+
+olaylar = []
+with open('olaylar.csv', newline='') as file:
+    okuyucu1 = csv.reader(file)
+    for index, row in enumerate(okuyucu1):
+        if index == 0:  # Başlık satırını atla
+            continue
+        olaylar.append(row)
+
+gemiler = []
+with open('gemiler.csv', newline='') as file:
+    okuyucu2 = csv.reader(file)
+    for index, row in enumerate(okuyucu2):
+        if index == 0:  # Başlık satırını atla
+            continue
+        gemiler.append(row)
+
+# Tırları ve geliş zamanlarını içeren bir sözlük oluşturma
+tir_zaman = {}
+for veri in olaylar:
+    zaman = int(veri[0])
+    plaka = veri[1]
+    ulke = veri[2]
+    ton_20 = veri[3]
+    ton_30 = veri[4]
+    yuk_miktari = veri[5]
+    maliyet = veri[6]
+    if zaman in tir_zaman:
+        tir_zaman[zaman].append(Tır(zaman, plaka, ulke, ton_20, ton_30, yuk_miktari, maliyet))
+    else:
+        tir_zaman[zaman] = [Tır(zaman, plaka, ulke, ton_20, ton_30, yuk_miktari, maliyet)]
+
+# Gemi nesnesi oluşturma
+gemi_verisi = gemiler[0]
+gemi = Gemi(int(gemi_verisi[0]), gemi_verisi[1], int(gemi_verisi[2]), gemi_verisi[3])
+
+for veri in gemiler:
+    gemi_zaman = int(veri[0])
+    adı = veri[1]
+    kapasite = veri[2]
+    gidecek_ülke = veri[3]
+
+    print(f"\nGemi Bilgileri: Zaman={gemi_zaman}, Adı={adı}, Kapasite={kapasite}, Gidecek Ülke={gidecek_ülke}")
+    # Geminin doluluk durumu
+    gemi_dolu = False
+
+    # Gemiye yüklenen toplam tonaj
+    gemi_toplam_tonaj = 0
+
+    # Vinç sayısını kontrol etmek için değişken
+    vinc_islem_sayisi = 0
+
+    # Yükleri gemiye yüklenme işlemi
+    istif_alani = Stack()
+
+    for zaman in sorted(tir_zaman.keys()):
+        tirlar_zamana_gore_sirali = sorted(tir_zaman[zaman], key=lambda x: x.plaka)  # Plakalara göre küçükten büyüğe sırala
+
+        for tır in tirlar_zamana_gore_sirali:
+            # Gemi kapasitesini kontrol et
+            if int(gemi_toplam_tonaj) + int(tır.yuk_miktari) > int(kapasite):
+                print(f"Gemi kapasitesi aşıldı, Gemi bekletiliyor, Zaman: {zaman}")
+                gemi_dolu = True
+                break
+
+            # Yükleri istif alanına yükle
+            istif_alani.push(tır)
+            print(f"Yük istif alanına yüklendi, Zaman: {zaman}, Tır: {tır.plaka}, Yük Miktarı: {tır.yuk_miktari}")
+            gemi_toplam_tonaj += int(tır.yuk_miktari)
+            vinc_islem_sayisi += 1
+
+            # Her bir vinç işleminden sonra kontrol et
+            if vinc_islem_sayisi >= 20:
+                print("Vinç işlem sayısı 20'ye ulaştı. Gemiye yüklemeye son veriliyor.")
+                gemi_dolu = True
+                break
+
+                # Gemi kapasitesinin %95'ini aştığında limanı terk et
+                if gemi_dolu and (gemi_toplam_tonaj / int(kapasite)) >= 0.95:
+                    print(f"Gemi {gemi.gemi_adı} limanı terk ediyor. Yeni gemi yüklenmeye başlıyor.")
+                    break
+
+        # İstif alanı doluysa veya tüm tırlar yüklenmişse döngüyü sonlandır
+        if gemi_dolu or vinc_islem_sayisi >= 20:
+            break
+
+        # İstif alanındaki yükleri gemiye yükle
+        while not istif_alani.is_empty():
+            yuk = istif_alani.pop()
+            print(f"Yük gemiye yüklendi, Zaman: {zaman}, Tır: {yuk.plaka}, Yük Miktarı: {yuk.yuk_miktari}")
+
+    # İlgili gemi için istatistikleri görüntüle
+    print(f"Gemi İstatistikleri: Toplam Tonaj={gemi_toplam_tonaj}, Vinc İşlem Sayısı={vinc_islem_sayisi}")
